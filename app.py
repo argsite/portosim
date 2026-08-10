@@ -5,7 +5,8 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel Monitoramento de Mortalidade - Porto Feliz")
+st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
+st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
 
 # Carregamento dos dados
 @st.cache_data
@@ -15,35 +16,107 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Dicionário de Tradução das Principais CID-10 de Óbito
+# Dicionário Clínico Abrangente (CID-10) para tradução de óbitos de Porto Feliz
 dicionario_cid = {
-    "I10": "Hipertensão essencial (primária)",
-    "I21": "Infarto agudo do miocárdio",
-    "I50": "Insuficiência cardíaca",
-    "I64": "Acidente vascular cerebral (AVC) não especificado",
-    "I63": "Infarto cerebral",
+    # Doenças Infecciosas e Parasitárias
+    "A09": "Diarreia e gastroenterite de origem infecciosa presumida",
+    "A150": "Tuberculose pulmonar",
+    "A419": "Septicemia não especificada (Sepse)",
+    "A46": "Erisipela",
+    "B342": "Infecção por coronavírus (Covid-19)",
+    "B24": "Doença pelo vírus da imunodeficiência humana [HIV]",
+    
+    # Neoplasias (Tumores)
+    "C169": "Neoplasia maligna do estômago",
+    "C189": "Neoplasia maligna do cólon",
+    "C221": "Carcinoma de vias biliares intra-hepáticas",
+    "C259": "Neoplasia maligna do pâncreas",
+    "C341": "Neoplasia maligna do lobo superior, brônquio ou pulmão",
     "C349": "Neoplasia maligna dos brônquios ou pulmões",
     "C509": "Neoplasia maligna da mama",
     "C61": "Neoplasia maligna da próstata",
-    "C189": "Neoplasia maligna do cólon",
-    "C259": "Neoplasia maligna do pâncreas",
-    "J189": "Pneumonia não especificada",
+    "C679": "Neoplasia maligna da bexiga urinária",
+    "C780": "Neoplasia maligna secundária dos pulmões",
+    "C80": "Neoplasia maligna, sem especificação de localização",
+    
+    # Doenças Endócrinas, Nutricionais e Metabólicas
+    "E109": "Diabetes mellitus insulino-dependente sem complicações",
+    "E119": "Diabetes mellitus não insulino-dependente sem complicações",
+    "E149": "Diabetes mellitus não especificado",
+    "E46": "Desnutrição proteico-calórica não especificada",
+    "E871": "Hipo-osmolalidade e hiponatremia",
+    
+    # Transtornos Mentais e Comportamentais
+    "F03": "Demência não especificada",
+    "F102": "Transtornos mentais e comportamentais devidos ao uso de álcool - síndrome de dependência",
+    
+    # Doenças do Sistema Nervoso
+    "G20": "Doença de Parkinson",
+    "G309": "Doença de Alzheimer não especificada",
+    "G934": "Encefalopatia não especificada",
+    
+    # Doenças do Aparelho Circulatório
+    "I10": "Hipertensão essencial (primária)",
+    "I110": "Doença cardíaca hipertensiva com insuficiência cardíaca",
+    "I219": "Infarto agudo do miocárdio não especificado",
+    "I251": "Doença aterosclerótica do coração",
+    "I255": "Cardiomiopatia isquêmica",
+    "I500": "Insuficiência cardíaca congestiva",
+    "I509": "Insuficiência cardíaca não especificada",
+    "I619": "Hemorragia intracraniana não especificada",
+    "I639": "Infarto cerebral não especificado",
+    "I64": "Acidente vascular cerebral (AVC) não especificado",
+    "I694": "Sequelas de acidente vascular cerebral não especificado",
+    "I713": "Aneurisma da aorta abdominal, rotundo",
+    "I714": "Aneurisma da aorta abdominal, sem menção de rotura",
+    
+    # Doenças do Aparelho Respiratório
+    "J128": "Outras pneumonias virais",
     "J180": "Broncopneumonia não especificada",
+    "J189": "Pneumonia não especificada",
+    "J440": "DPOC com infecção respiratória aguda inferior",
     "J449": "Doença pulmonar obstrutiva crônica (DPOC)",
-    "J690": "Pneumonite devida a alimentos e vômitos",
-    "B342": "Infecção por coronavírus (Covid-19)",
-    "A419": "Septicemia não especificada",
+    "J690": "Pneumonite devida a alimentos e vômitos (aspiração)",
+    "J960": "Insuficiência respiratória aguda",
+    "J969": "Insuficiência respiratória não especificada",
+    
+    # Doenças do Aparelho Digestivo
+    "K566": "Outras obstruções intestinais e as não especificadas",
+    "K703": "Cirrose hepática alcoólica",
+    "K729": "Insuficiência hepática não especificada",
+    "K746": "Outras cirroses hepáticas e as não especificadas",
+    "K859": "Pancreatite aguda não especificada",
+    "K922": "Hemorragia gastrintestinal não especificada",
+    
+    # Doenças do Aparelho Geniturinário
+    "N179": "Insuficiência renal aguda não especificada",
+    "N189": "Doença renal crônica não especificada",
+    "N19": "Insuficiência renal não especificada",
+    "N390": "Infecção do trato urinário de local não especificado",
+    
+    # Sintomas, Sinais e Achados Anormais
     "R092": "Parada respiratória",
-    "R99": "Outras causas mal definidas",
-    "X700": "Lesão autoprovocada (Suicídio)",
-    "V892": "Acidente de transporte",
+    "R54": "Senilidade (Velhice extrema)",
+    "R960": "Morte instantânea sem causa aparente",
+    "R961": "Morte ocorrida menos de 24 horas após o início dos sintomas",
+    "R98": "Morte sem assistência",
+    "R99": "Outras causas mal definidas e desconhecidas",
+    
+    # Causas Externas e Acidentes
+    "V435": "Acidente de automóvel traumatizando ocupante",
+    "V892": "Acidente de trânsito não especificado",
+    "W010": "Queda no mesmo nível por piso escorregadio",
+    "W180": "Outras quedas no mesmo nível",
+    "W190": "Queda não especificada",
+    "X700": "Lesão autoprovocada intencionalmente (Suicídio)",
+    "X590": "Exposição a fatores não especificados como causa de ferimentos"
 }
 
 def traduzir_cid(codigo):
     if pd.isna(codigo):
         return "Não Informado"
     codigo_limpo = str(codigo).strip().upper()
-    return dicionario_cid.get(codigo_limpo, f"Outra causa ({codigo_limpo})")
+    return dicionario_cid.get(codigo_limpo, f"Outras Causas (CID: {codigo_limpo})")
 
 if "CAUSABAS" in df.columns:
     df["CAUSA_DESC"] = df["CAUSABAS"].apply(traduzir_cid)
@@ -72,7 +145,7 @@ bins = [0, 20, 40, 60, 80, 130]
 labels = ["0-19 anos", "20-39 anos", "40-59 anos", "60-79 anos", "80+ anos"]
 df["FAIXA_ETARIA"] = pd.cut(df["IDADE_ANOS"], bins=bins, labels=labels, right=False)
 
-# Mapeamento CORRETO do Local de Óbito usando a coluna LOCOCOR do SIM
+# Mapeamento do Local de Óbito usando a coluna LOCOCOR do SIM
 mapa_local = {1: "Hospital", 2: "Outro Estab. Saúde", 3: "Domicílio", 4: "Via Pública", 5: "Outros"}
 if "LOCOCOR" in df.columns:
     df["LOCAL_DESC"] = df["LOCOCOR"].map(mapa_local).fillna("Não Informado")
