@@ -120,6 +120,7 @@ def traduzir_cid(codigo):
 
 if "CAUSABAS" in df.columns:
     df["CAUSA_DESC"] = df["CAUSABAS"].apply(traduzir_cid)
+    df["LETRA_CID"] = df["CAUSABAS"].str.slice(0, 1).fillna("Outros")
 
 # Conversão robusta de idade
 def converter_idade_sim(val):
@@ -152,7 +153,7 @@ if "LOCOCOR" in df.columns:
 else:
     df["LOCAL_DESC"] = "Não Informado"
 
-# Tradução padronizada do Sexo no SIM (1 = Masculino, 2 = Feminino)
+# Tradução padronizada do Sexo no SIM
 mapa_sexo = {1: "Masculino", 2: "Feminino"}
 if "SEXO" in df.columns:
     df["SEXO_DESC"] = df["SEXO"].map(mapa_sexo).fillna("Não Informado")
@@ -177,13 +178,13 @@ if "IDADE_ANOS" in df_filtrado.columns and not df_filtrado["IDADE_ANOS"].dropna(
 c4.metric("Município", "Porto Feliz - SP")
 st.markdown("---")
 
-# Abas para Organizar o Dashboard (Adicionada a Aba 5)
+# Abas para Organizar o Dashboard
 aba1, aba2, aba3, aba4, aba5 = st.tabs([
     "📈 Visão Geral", 
     "👥 Perfil & Local", 
     "🔬 Causas", 
     "📋 Tabela Interativa & Filtros", 
-    "❤️ Análise por Gênero & Coração"
+    "❤️ Análise por Gênero & Grupos CID-10"
 ])
 
 with aba1:
@@ -285,18 +286,43 @@ with aba4:
     )
 
 with aba5:
-    st.subheader("❤️ Análise Especial: Óbitos por Gênero, Faixa Etária e Foco Cardíaco")
-    st.markdown("Cruzamento detalhado para investigar o impacto das doenças cardiovasculares e causas gerais divididas por gênero e faixa etária na comunidade.")
+    st.subheader("❤️ Análise por Gênero, Faixa Etária e Grupos da CID-10")
+    st.markdown("Selecione abaixo os agrupamentos de CID-10 que deseja incluir na análise comparativa entre homens e mulheres.")
     
-    # Filtro interno rápido para a aba 5 se focar em causas do coração
-    foco_coracao = st.checkbox("Destacar apenas Causas Cardíacas / Doenças do Coração (CID-10 iniciadas com I)")
+    # Checkboxes para os principais grupos de letras da CID-10
+    st.markdown("**Filtrar Grupos de Causas (CID-10):**")
+    col_cb1, col_cb2, col_cb3, col_cb4, col_cb5 = st.columns(5)
     
-    df_genero = df_filtrado.copy()
-    if foco_coracao:
-        # Filtra códigos CID que começam com a letra 'I' (doenças do aparelho circulatório)
-        df_genero = df_genero[df_genero["CAUSABAS"].str.startswith("I", na=False)]
-        st.info("Filtro aplicado: Exibindo apenas óbitos por doenças do aparelho circulatório.")
-
+    with col_cb1:
+        chk_circulatorio = st.checkbox("❤️ Aparelho Circulatório (Letra I)", value=True)
+    with col_cb2:
+        chk_neoplasias = st.checkbox("🎗️ Neoplasias / Tumores (Letra C)", value=True)
+    with col_cb3:
+        chk_respiratorio = st.checkbox("🫁 Aparelho Respiratório (Letra J)", value=True)
+    with col_cb4:
+        chk_externas = st.checkbox("⚠️ Causas Externas / Acidentes (Letras V, W, X, Y)", value=True)
+    with col_cb5:
+        chk_outros = st.checkbox("📋 Outros Grupos / Demais Letras", value=True)
+        
+    # Lógica de filtragem baseada nos checkboxes selecionados
+    letras_permitidas = []
+    if chk_circulatorio:
+        letras_permitidas.append("I")
+    if chk_neoplasias:
+        letras_permitidas.append("C")
+    if chk_respiratorio:
+        letras_permitidas.append("J")
+    if chk_externas:
+        letras_permitidas.extend(["V", "W", "X", "Y"])
+    if chk_outros:
+        # Pega todas as outras letras que não estão nas principais acima
+        todas_letras = df_filtrado["LETRA_CID"].unique()
+        outras = [l for l in todas_letras if l not in ["I", "C", "J", "V", "W", "X", "Y"]]
+        letras_permitidas.extend(outras)
+        
+    df_genero = df_filtrado[df_filtrado["LETRA_CID"].isin(letras_permitidas)]
+    
+    st.markdown("---")
     col_g1, col_g2 = st.columns(2)
     
     with col_g1:
@@ -304,7 +330,6 @@ with aba5:
         df_homens = df_genero[df_genero["SEXO_DESC"] == "Masculino"]
         if not df_homens.empty:
             cross_homens = df_homens.groupby(["FAIXA_ETARIA", "CAUSA_DESC"]).size().reset_index(name="Total")
-            # Pega as top causas para o gráfico não ficar poluído
             top_causas_h = df_homens["CAUSA_DESC"].value_counts().head(6).index.tolist()
             cross_homens_top = cross_homens[cross_homens["CAUSA_DESC"].isin(top_causas_h)]
             
@@ -334,15 +359,8 @@ with aba5:
                 y="Total", 
                 color="CAUSA_DESC", 
                 barmode="stack",
-                title="Mulheres: Causas por Faixa Etária (Atenção Cardíaca)"
+                title="Mulheres: Causas por Faixa Etária"
             )
             st.plotly_chart(fig_m, use_container_width=True)
         else:
             st.warning("Nenhum registro encontrado para os filtros selecionados.")
-            
-    st.markdown("---")
-    st.markdown("#### 💡 Como visualizar e interpretar para a equipe:")
-    st.markdown("""
-    * **Gráficos Empilhados por Faixa Etária:** Ao olhar o gráfico das mulheres, as cores empilhadas mostram exatamente em qual faixa etária (ex: 60-79 anos ou 80+ anos) as complicações cardíacas ou outras causas estão pesando mais.
-    * **Botão de Foco Cardíaco:** Marcar a caixinha *"Destacar apenas Causas Cardíacas"* isola instantaneamente o grupo de doenças do aparelho circulatório (infarto, insuficiência cardíaca, AVC, hipertensão), respondendo de forma imediata se há uma concentração de óbitos femininos por problemas do coração na unidade.
-    """)
