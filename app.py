@@ -73,9 +73,12 @@ bins = [0, 20, 40, 60, 80, 130]
 labels = ["0-19 anos", "20-39 anos", "40-59 anos", "60-79 anos", "80+ anos"]
 df["FAIXA_ETARIA"] = pd.cut(df["IDADE_ANOS"], bins=bins, labels=labels, right=False)
 
-# Mapeamento do Local de Óbito
+# Mapeamento CORRETO do Local de Óbito usando a coluna LOCOCOR do SIM
 mapa_local = {1: "Hospital", 2: "Outro Estab. Saúde", 3: "Domicílio", 4: "Via Pública", 5: "Outros"}
-df["LOCAL_DESC"] = df["LOCAL"].map(mapa_local).fillna("Não Informado")
+if "LOCOCOR" in df.columns:
+    df["LOCAL_DESC"] = df["LOCOCOR"].map(mapa_local).fillna("Não Informado")
+else:
+    df["LOCAL_DESC"] = "Não Informado"
 
 # Barra Lateral - Filtros Globais
 st.sidebar.header("🔍 Filtros Operacionais Globais")
@@ -159,7 +162,6 @@ with aba4:
     st.subheader("📋 Tabela de Consulta Detalhada com Filtros Dinâmicos")
     st.markdown("Use os menus abaixo para filtrar especificamente os registros que deseja analisar ou exportar para a equipe.")
     
-    # Menus suspensos para filtragem fina na tabela
     col_f1, col_f2, col_f3 = st.columns(3)
     
     with col_f1:
@@ -174,7 +176,6 @@ with aba4:
         locais_disponiveis = df_filtrado["LOCAL_DESC"].dropna().unique()
         local_filtro = st.multiselect("Filtrar por Local de Óbito:", options=sorted(locais_disponiveis))
         
-    # Aplicação dos filtros locais da tabela
     df_tabela = df_filtrado.copy()
     if faixa_filtro:
         df_tabela = df_tabela[df_tabela["FAIXA_ETARIA"].astype(str).isin(faixa_filtro)]
@@ -185,13 +186,11 @@ with aba4:
         
     st.markdown(f"**Registros encontrados com os filtros aplicados:** {len(df_tabela)}")
     
-    # Seleção de colunas mais limpas para exibição amigável
     colunas_exibicao = ["ANO_OBITO", "DTOBITO", "IDADE_ANOS", "FAIXA_ETARIA", "SEXO", "CAUSA_DESC", "LOCAL_DESC"]
     colunas_presentes = [c for c in colunas_exibicao if c in df_tabela.columns]
     
     st.dataframe(df_tabela[colunas_presentes], use_container_width=True)
     
-    # Botão para download dos dados filtrados em CSV
     csv_dados = df_tabela[colunas_presentes].to_csv(index=False).encode('utf-8')
     st.download_button(
         label="📥 Baixar dados filtrados em CSV (para relatório)",
