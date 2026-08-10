@@ -16,9 +16,8 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Dicionário Clínico Abrangente e Ampliado (CID-10) - Inclui todas as especificações solicitadas
+# Dicionário Clínico Abrangente e Ampliado (CID-10)
 dicionario_cid = {
-    # Doenças Infecciosas e Parasitárias
     "A09": "Diarreia e gastroenterite de origem infecciosa presumida",
     "A150": "Tuberculose pulmonar",
     "A418": "Outras septicemias",
@@ -26,8 +25,6 @@ dicionario_cid = {
     "A46": "Erisipela",
     "B24": "Doença pelo vírus da imunodeficiência humana [HIV]",
     "B342": "Infecção por coronavírus (Covid-19)",
-    
-    # Neoplasias (Tumores)
     "C169": "Neoplasia maligna do estômago",
     "C189": "Neoplasia maligna do cólon",
     "C229": "Neoplasia maligna do fígado, não especificada",
@@ -39,8 +36,6 @@ dicionario_cid = {
     "C61": "Neoplasia maligna da próstata",
     "C780": "Neoplasia maligna secundária dos pulmões",
     "C80": "Neoplasia maligna, sem especificação de localização",
-    
-    # Doenças Endócrinas, Nutricionais e Metabólicas
     "E107": "Diabetes mellitus insulino-dependente com múltiplas complicações",
     "E108": "Diabetes mellitus insulino-dependente com complicações não especificadas",
     "E112": "Diabetes mellitus não insulino-dependente com complicações renais",
@@ -49,17 +44,11 @@ dicionario_cid = {
     "E142": "Diabetes mellitus não especificado com complicações renais",
     "E149": "Diabetes mellitus não especificado",
     "E46": "Desnutrição proteico-calórica não especificada",
-    
-    # Transtornos Mentais e Comportamentais
     "F03": "Demência não especificada",
     "F102": "Transtornos mentais devidos ao uso de álcool - dependência",
-    
-    # Doenças do Sistema Nervoso
     "G301": "Doença de Alzheimer com início tardio",
     "G309": "Doença de Alzheimer não especificada",
     "G934": "Encefalopatia não especificada",
-    
-    # Doenças do Aparelho Circulatório (Coração / Cardiovasculares)
     "I10": "Hipertensão essencial (primária)",
     "I110": "Doença cardíaca hipertensiva com insuficiência cardíaca",
     "I120": "Doença renal hipertensiva com insuficiência renal",
@@ -74,8 +63,6 @@ dicionario_cid = {
     "I694": "Sequelas de acidente vascular cerebral não especificado",
     "I698": "Sequelas de outras doenças cerebrovasculares e as não especificadas",
     "I713": "Aneurisma da aorta abdominal, rotundo",
-    
-    # Doenças do Aparelho Respiratório
     "J159": "Pneumonia bacteriana não especificada",
     "J180": "Broncopneumonia não especificada",
     "J189": "Pneumonia não especificada",
@@ -87,25 +74,17 @@ dicionario_cid = {
     "J841": "Outras doenças pulmonares intersticiais fibróticas",
     "J960": "Insuficiência respiratória aguda",
     "J969": "Insuficiência respiratória não especificada",
-    
-    # Doenças do Aparelho Digestivo
     "K703": "Cirrose hepática alcoólica",
     "K746": "Outras cirroses hepáticas e as não especificadas",
-    
-    # Doenças do Aparelho Geniturinário
     "N179": "Insuficiência renal aguda não especificada",
     "N189": "Doença renal crônica não especificada",
     "N390": "Infecção do trato urinário de local não especificado",
-    
-    # Sintomas, Sinais e Achados Anormais
     "R570": "Choque cardiogênico",
     "R092": "Parada respiratória",
     "R54": "Senilidade (Velhice extrema)",
     "R961": "Morte ocorrida menos de 24 horas após o início dos sintomas",
     "R98": "Morte sem assistência",
     "R99": "Outras causas mal definidas e desconhecidas",
-    
-    # Causas Externas, Acidentes e Violências
     "V031": "Pedestre traumatizado em colisão com automóvel, caminhonete ou furgão",
     "V093": "Pedestre traumatizado em outros acidentes de transporte e nos não especificados",
     "V234": "Motociclista traumatizado em colisão com automóvel, caminhonete ou furgão",
@@ -168,6 +147,17 @@ if "SEXO" in df.columns:
 else:
     df["SEXO_DESC"] = "Não Informado"
 
+# Função para identificar causas passíveis de atenção primária / evitáveis (ex: Hipertensão, Diabetes, Pneumonias tratáveis, ITU, etc.)
+def eh_evitavel_aps(codigo):
+    if pd.isna(codigo):
+        return False
+    c = str(codigo).strip().upper()
+    # Lista de prefixos ou códigos comuns de atenção primária / evitáveis
+    prefixos_aps = ("I10", "I11", "I12", "I13", "E10", "E11", "E14", "J15", "J18", "N39", "A09")
+    return c.startswith(prefixos_aps)
+
+df["EVITAVEL_APS"] = df["CAUSABAS"].apply(eh_evitavel_aps)
+
 # Barra Lateral - Filtros Globais
 st.sidebar.header("🔍 Filtros Operacionais Globais")
 anos_disponiveis = sorted(df["ANO_OBITO"].dropna().unique())
@@ -175,15 +165,29 @@ anos_selecionados = st.sidebar.multiselect("Selecione o(s) Ano(s):", options=ano
 
 df_filtrado = df[df["ANO_OBITO"].isin(anos_selecionados)] if anos_selecionados else df.copy()
 
-# Métricas Principais
+# Métricas Principais Ampliadas nos Cards de Topo (divididas em duas linhas para melhor visualização)
 st.markdown("---")
+total_obitos = len(df_filtrado)
+total_homens = len(df_filtrado[df_filtrado["SEXO_DESC"] == "Masculino"])
+total_mulheres = len(df_filtrado[df_filtrado["SEXO_DESC"] == "Feminino"])
+
+media_h = int(df_filtrado[df_filtrado["SEXO_DESC"] == "Masculino"]["IDADE_ANOS"].mean()) if not df_filtrado[df_filtrado["SEXO_DESC"] == "Masculino"]["IDADE_ANOS"].dropna().empty else 0
+media_m = int(df_filtrado[df_filtrado["SEXO_DESC"] == "Feminino"]["IDADE_ANOS"].mean()) if not df_filtrado[df_filtrado["SEXO_DESC"] == "Feminino"]["IDADE_ANOS"].dropna().empty else 0
+
+total_evitaveis = df_filtrado["EVITAVEL_APS"].sum()
+
+# Linha 1 de Cards
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Total de Óbitos", len(df_filtrado))
-c2.metric("Anos Analisados", f"{len(anos_selecionados)}")
-if "IDADE_ANOS" in df_filtrado.columns and not df_filtrado["IDADE_ANOS"].dropna().empty:
-    media_idade = int(df_filtrado["IDADE_ANOS"].mean())
-    c3.metric("Média de Idade no Óbito", f"{media_idade} anos")
-c4.metric("Município", "Porto Feliz - SP")
+c1.metric("Total de Óbitos", total_obitos)
+c2.metric("👨 Óbitos Masculinos", total_homens)
+c3.metric("👩 Óbitos Femininos", total_mulheres)
+c4.metric("🛡️ Óbitos por Causas Evitáveis (APS)", total_evitaveis)
+
+# Linha 2 de Cards
+c5, c6, c7 = st.columns(3)
+c5.metric("👨 Média de Idade (Homens)", f"{media_h} anos")
+c6.metric("👩 Média de Idade (Mulheres)", f"{media_m} anos")
+c7.metric("Município", "Porto Feliz - SP")
 st.markdown("---")
 
 # Abas para Organizar o Dashboard
