@@ -5,7 +5,7 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel de Monitoramento de Mortalidade - Porto Feliz")
+st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
 st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
 
 # Carregamento dos dados
@@ -16,7 +16,7 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Dicionário Clínico Abrangente e Ampliado (CID-10)
+# Dicionário Clínico Abrangente e Ampliado (CID-10) - Inclui todas as especificações solicitadas
 dicionario_cid = {
     # Doenças Infecciosas e Parasitárias
     "A09": "Diarreia e gastroenterite de origem infecciosa presumida",
@@ -327,11 +327,6 @@ with aba5:
         
     df_genero = df_filtrado[df_filtrado["LETRA_CID"].isin(letras_permitidas)]
     
-    # Criação de uma paleta e mapeamento de cores consistente unificado para todas as causas presentes na base geral
-    todas_causas_unicas = sorted(df_filtrado["CAUSA_DESC"].dropna().unique())
-    paleta_cores = px.colors.qualitative.Prism + px.colors.qualitative.Safe + px.colors.qualitative.Vivid
-    mapa_cores_global = {causa: paleta_cores[i % len(paleta_cores)] for i, causa in enumerate(todas_causas_unicas)}
-
     st.markdown("---")
     col_g1, col_g2 = st.columns(2)
     
@@ -340,15 +335,16 @@ with aba5:
         df_homens = df_genero[df_genero["SEXO_DESC"] == "Masculino"]
         if not df_homens.empty:
             cross_homens = df_homens.groupby(["FAIXA_ETARIA", "CAUSA_DESC"]).size().reset_index(name="Total")
+            top_causas_h = df_homens["CAUSA_DESC"].value_counts().head(6).index.tolist()
+            cross_homens_top = cross_homens[cross_homens["CAUSA_DESC"].isin(top_causas_h)]
             
             fig_h = px.bar(
-                cross_homens, 
+                cross_homens_top, 
                 x="FAIXA_ETARIA", 
                 y="Total", 
                 color="CAUSA_DESC", 
                 barmode="stack",
-                title="Homens: Causas por Faixa Etária",
-                color_discrete_map=mapa_cores_global
+                title="Homens: Causas por Faixa Etária"
             )
             st.plotly_chart(fig_h, use_container_width=True)
         else:
@@ -359,15 +355,16 @@ with aba5:
         df_mulheres = df_genero[df_genero["SEXO_DESC"] == "Feminino"]
         if not df_mulheres.empty:
             cross_mulheres = df_mulheres.groupby(["FAIXA_ETARIA", "CAUSA_DESC"]).size().reset_index(name="Total")
+            top_causas_m = df_mulheres["CAUSA_DESC"].value_counts().head(6).index.tolist()
+            cross_mulheres_top = cross_mulheres[cross_mulheres["CAUSA_DESC"].isin(top_causas_m)]
             
             fig_m = px.bar(
-                cross_mulheres, 
+                cross_mulheres_top, 
                 x="FAIXA_ETARIA", 
                 y="Total", 
                 color="CAUSA_DESC", 
                 barmode="stack",
-                title="Mulheres: Causas por Faixa Etária",
-                color_discrete_map=mapa_cores_global
+                title="Mulheres: Causas por Faixa Etária"
             )
             st.plotly_chart(fig_m, use_container_width=True)
         else:
