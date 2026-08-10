@@ -5,8 +5,7 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
-st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
+st.title("📊 Painel de Monitoramento de Mortalidade - Porto Feliz")
 
 # Carregamento dos dados
 @st.cache_data
