@@ -16,23 +16,24 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Tratamento básico da idade no SIM (se a coluna existir)
-def converter_idade(val):
+# Correção robusta da conversão de idade do padrão SIM do DATASUS
+def converter_idade_sim(val):
     try:
-        val_str = str(val).zfill(4)
+        val_str = str(int(val)).zfill(3)
         tipo = val_str[0]
-        idade_num = int(val_str[1:])
-        if tipo == '4': # Anos completos
-            return idade_num
-        elif tipo == '5': # 100 anos ou mais
-            return 100 + idade_num
-        else:
-            return 0 # Ignora menores de 1 ano para esta métrica simples
+        valor = int(val_str[1:])
+        if tipo == '4':  # Anos completos (ex: 438 -> 38 anos)
+            return valor
+        elif tipo == '5':  # 100 anos ou mais (ex: 502 -> 102 anos)
+            return 100 + valor
+        elif tipo in ['1', '2', '3']:  # Minutos, horas ou dias de vida
+            return 0  # Considerado menor de 1 ano
+        return None
     except:
         return None
 
 if "IDADE" in df.columns and "IDADE_ANOS" not in df.columns:
-    df["IDADE_ANOS"] = df["IDADE"].apply(converter_idade)
+    df["IDADE_ANOS"] = df["IDADE"].apply(converter_idade_sim)
 
 # Barra Lateral - Filtros
 st.sidebar.header("🔍 Filtros Operacionais")
@@ -53,7 +54,7 @@ c4.metric("Município", "Porto Feliz - SP")
 st.markdown("---")
 
 # Abas para Organizar o Dashboard
-aba1, aba2, aba3 = st.tabs(["📈 Visão Geral & Tendências", "👥 Perfil Demográfico & Local", "🔬 Causas Detalhadas"])
+aba1, aba2, aba3 = st.tabs(["📈 Visão Geral & Tendências", "👥 Perfil Demográfico & Local", "🔬 Causas & Cruzamento Anual"])
 
 with aba1:
     col1, col2 = st.columns(2)
@@ -67,9 +68,9 @@ with aba1:
     with col2:
         st.subheader("📅 Sazonalidade (Óbitos por Mês)")
         if "DTOBITO" in df_filtrado.columns:
-            # Extrai o mês da data do óbito (formato ddmmyyyy no SIM)
-            df_filtrado["MES"] = df_filtrado["DTOBITO"].astype(str).str.zfill(8).str[2:4]
-            obitos_mes = df_filtrado["MES"].value_counts().sort_index().reset_index()
+            df_temp = df_filtrado.copy()
+            df_temp["MES"] = df_temp["DTOBITO"].astype(str).str.zfill(8).str[2:4]
+            obitos_mes = df_temp["MES"].value_counts().sort_index().reset_index()
             obitos_mes.columns = ["Mês", "Total"]
             meses_nomes = {"01": "Jan", "02": "Fev", "03": "Mar", "04": "Abr", "05": "Mai", "06": "Jun", 
                            "07": "Jul", "08": "Ago", "09": "Set", "10": "Out", "11": "Nov", "12": "Dez"}
@@ -82,7 +83,6 @@ with aba2:
     with col1:
         st.subheader("🏥 Local de Ocorrência")
         if "LOCAL" in df_filtrado.columns:
-            # Legenda amigável para o campo LOCAL do SIM
             mapa_local = {1: "Hospital", 2: "Outro Estab. Saúde", 3: "Domicílio", 4: "Via Pública", 5: "Outros"}
             df_filtrado["LOCAL_DESC"] = df_filtrado["LOCAL"].map(mapa_local).fillna("Não Informado")
             locais = df_filtrado["LOCAL_DESC"].value_counts().reset_index()
@@ -91,24 +91,41 @@ with aba2:
             st.plotly_chart(fig_local, use_container_width=True)
             
     with col2:
-        st.subheader("👥 Distribuição por Faixa Etária")
+        st.subheader("👥 Distribuição por Faixa Etária Corrigida")
         if "IDADE_ANOS" in df_filtrado.columns:
-            bins = [0, 19, 39, 59, 79, 120]
+            bins = [0, 20, 40, 60, 80, 130]
             labels = ["0-19 anos", "20-39 anos", "40-59 anos", "60-79 anos", "80+ anos"]
             df_filtrado["FAIXA_ETARIA"] = pd.cut(df_filtrado["IDADE_ANOS"], bins=bins, labels=labels, right=False)
             faixas = df_filtrado["FAIXA_ETARIA"].value_counts().sort_index().reset_index()
             faixas.columns = ["Faixa Etária", "Total"]
-            fig_idade = px.bar(faixas, x="Faixa Etária", y="Total", color="Total", color_continuous_scale="Purples")
+            fig_idade = px.bar(faixas, x="Faixa Etária", y="Total", color="Total", color_continuous_scale="Purples", text="Total")
             st.plotly_chart(fig_idade, use_container_width=True)
 
 with aba3:
     st.subheader("🔬 Principais Causas Básicas (CID-10)")
     if "CAUSABAS" in df_filtrado.columns:
-        top_causas = df_filtrado["CAUSABAS"].value_counts().head(12).reset_index()
+        top_causas = df_filtrado["CAUSABAS"].value_counts().head(10).reset_index()
         top_causas.columns = ["CID-10", "Ocorrências"]
-        fig_causa = px.bar(top_causas, x="Ocorrências", y="CID-10", orientation="h", color="Ocorrências", color_continuous_scale="Reds")
+        fig_causa = px.bar(top_causas, x="Ocorrências", y="CID-10", orientation="h", color="Ocorrências", color_continuous_scale="Reds", text="Ocorrências")
         fig_causa.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_causa, use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("📊 Cruzamento: Causas de Óbito por Ano")
+        # Gráfico de barras empilhadas ou agrupadas mostrando a evolução das principais causas ao longo dos anos
+        top_cid_lista = df_filtrado["CAUSABAS"].value_counts().head(5).index.tolist()
+        df_cruzamento = df_filtrado[df_filtrado["CAUSABAS"].isin(top_cid_lista)]
+        
+        cruzamento_ano_causa = df_cruzamento.groupby(["ANO_OBITO", "CAUSABAS"]).size().reset_index(name="Quantidade")
+        fig_cruzamento = px.bar(
+            cruzamento_ano_causa, 
+            x="ANO_OBITO", 
+            y="Quantidade", 
+            color="CAUSABAS", 
+            barmode="group",
+            title="Evolução das 5 Principais Causas (CID-10) por Ano"
+        )
+        st.plotly_chart(fig_cruzamento, use_container_width=True)
 
 # Expander com os dados brutos
 with st.expander("📋 Ver base de dados detalhada e limpa"):
