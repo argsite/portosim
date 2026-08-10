@@ -16,18 +16,59 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Correção robusta da conversão de idade do padrão SIM do DATASUS
+# Dicionário de Tradução das Principais CID-10 de Óbito (Capítulos e Códigos Comuns)
+dicionario_cid = {
+    # Doenças do aparelho circulatório
+    "I10": "Hipertensão essencial (primária)",
+    "I21": "Infarto agudo do miocárdio",
+    "I50": "Insuficiência cardíaca",
+    "I64": "Acidente vascular cerebral (AVC) não especificado",
+    "I63": "Infarto cerebral",
+    # Neoplasias (Tumores)
+    "C349": "Neoplasia maligna dos brônquios ou pulmoões",
+    "C509": "Neoplasia maligna da mama",
+    "C61": "Neoplasia maligna da próstata",
+    "C189": "Neoplasia maligna do cólon",
+    "C259": "Neoplasia maligna do pâncreas",
+    # Doenças respiratórias
+    "J189": "Pneumonia não especificada",
+    "J180": "Broncopneumonia não especificada",
+    "J449": "Doença pulmonar obstrutiva crônica (DPOC)",
+    "J690": "Pneumonite devida a alimentos e vômitos",
+    # Infecções e Outros
+    "B342": "Infecção por coronavírus de localização não especificada (Covid-19)",
+    "A419": "Septicemia não especificada",
+    "R092": "Parada respiratória",
+    "R99": "Outras causas mal definidas e desconhecidas",
+    # Causas Externas
+    "X700": "Lesão autoprovocada intencionalmente (Suicídio)",
+    "V892": "Acidente de transporte não especificado",
+    "X990": "Agressão por objeto cortante"
+}
+
+def traduzir_cid(codigo):
+    if pd.isna(codigo):
+        return "Não Informado"
+    codigo_limpo = str(codigo).strip().upper()
+    # Retorna a descrição amigável se existir no dicionário, senão exibe o próprio código formatado
+    return dicionario_cid.get(codigo_limpo, f"Outra causa ({codigo_limpo})")
+
+# Aplica a tradução das causas
+if "CAUSABAS" in df.columns:
+    df["CAUSA_DESC"] = df["CAUSABAS"].apply(traduzir_cid)
+
+# Correção da conversão de idade do padrão SIM do DATASUS
 def converter_idade_sim(val):
     try:
         val_str = str(int(val)).zfill(3)
         tipo = val_str[0]
         valor = int(val_str[1:])
-        if tipo == '4':  # Anos completos (ex: 438 -> 38 anos)
+        if tipo == '4':  # Anos completos
             return valor
-        elif tipo == '5':  # 100 anos ou mais (ex: 502 -> 102 anos)
+        elif tipo == '5':  # 100 anos ou mais
             return 100 + valor
-        elif tipo in ['1', '2', '3']:  # Minutos, horas ou dias de vida
-            return 0  # Considerado menor de 1 ano
+        elif tipo in ['1', '2', '3']:  # Menor de 1 ano
+            return 0
         return None
     except:
         return None
@@ -91,7 +132,7 @@ with aba2:
             st.plotly_chart(fig_local, use_container_width=True)
             
     with col2:
-        st.subheader("👥 Distribuição por Faixa Etária Corrigida")
+        st.subheader("👥 Distribuição por Faixa Etária")
         if "IDADE_ANOS" in df_filtrado.columns:
             bins = [0, 20, 40, 60, 80, 130]
             labels = ["0-19 anos", "20-39 anos", "40-59 anos", "60-79 anos", "80+ anos"]
@@ -102,28 +143,27 @@ with aba2:
             st.plotly_chart(fig_idade, use_container_width=True)
 
 with aba3:
-    st.subheader("🔬 Principais Causas Básicas (CID-10)")
-    if "CAUSABAS" in df_filtrado.columns:
-        top_causas = df_filtrado["CAUSABAS"].value_counts().head(10).reset_index()
-        top_causas.columns = ["CID-10", "Ocorrências"]
-        fig_causa = px.bar(top_causas, x="Ocorrências", y="CID-10", orientation="h", color="Ocorrências", color_continuous_scale="Reds", text="Ocorrências")
+    st.subheader("🔬 Principais Causas de Óbito (Clínicas)")
+    if "CAUSA_DESC" in df_filtrado.columns:
+        top_causas = df_filtrado["CAUSA_DESC"].value_counts().head(10).reset_index()
+        top_causas.columns = ["Causa", "Ocorrências"]
+        fig_causa = px.bar(top_causas, x="Ocorrências", y="Causa", orientation="h", color="Ocorrências", color_continuous_scale="Reds", text="Ocorrências")
         fig_causa.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_causa, use_container_width=True)
         
         st.markdown("---")
-        st.subheader("📊 Cruzamento: Causas de Óbito por Ano")
-        # Gráfico de barras empilhadas ou agrupadas mostrando a evolução das principais causas ao longo dos anos
-        top_cid_lista = df_filtrado["CAUSABAS"].value_counts().head(5).index.tolist()
-        df_cruzamento = df_filtrado[df_filtrado["CAUSABAS"].isin(top_cid_lista)]
+        st.subheader("📊 Cruzamento: Principais Causas por Ano")
+        top_causas_lista = df_filtrado["CAUSA_DESC"].value_counts().head(5).index.tolist()
+        df_cruzamento = df_filtrado[df_filtrado["CAUSA_DESC"].isin(top_causas_lista)]
         
-        cruzamento_ano_causa = df_cruzamento.groupby(["ANO_OBITO", "CAUSABAS"]).size().reset_index(name="Quantidade")
+        cruzamento_ano_causa = df_cruzamento.groupby(["ANO_OBITO", "CAUSA_DESC"]).size().reset_index(name="Quantidade")
         fig_cruzamento = px.bar(
             cruzamento_ano_causa, 
             x="ANO_OBITO", 
             y="Quantidade", 
-            color="CAUSABAS", 
+            color="CAUSA_DESC", 
             barmode="group",
-            title="Evolução das 5 Principais Causas (CID-10) por Ano"
+            title="Evolução das 5 Principais Causas de Óbito por Ano"
         )
         st.plotly_chart(fig_cruzamento, use_container_width=True)
 
