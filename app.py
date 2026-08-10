@@ -16,7 +16,7 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Dicionário Clínico Abrangente e Ampliado (CID-10) - Cobre 100% das ocorrências de Porto Feliz
+# Dicionário Clínico Abrangente e Ampliado (CID-10) - Inclui todas as especificações solicitadas
 dicionario_cid = {
     # Doenças Infecciosas e Parasitárias
     "A09": "Diarreia e gastroenterite de origem infecciosa presumida",
@@ -33,7 +33,9 @@ dicionario_cid = {
     "C229": "Neoplasia maligna do fígado, não especificada",
     "C259": "Neoplasia maligna do pâncreas",
     "C349": "Neoplasia maligna dos brônquios ou pulmões",
-    "C509": "Neoplasia maligna da mama",
+    "C508": "Neoplasia maligna da mama com lesão com sobreposição",
+    "C509": "Neoplasia maligna da mama, não especificada",
+    "C539": "Neoplasia maligna do colo do útero, não especificado",
     "C61": "Neoplasia maligna da próstata",
     "C780": "Neoplasia maligna secundária dos pulmões",
     "C80": "Neoplasia maligna, sem especificação de localização",
@@ -103,10 +105,19 @@ dicionario_cid = {
     "R98": "Morte sem assistência",
     "R99": "Outras causas mal definidas e desconhecidas",
     
-    # Causas Externas e Acidentes
+    # Causas Externas, Acidentes e Violências
+    "V031": "Pedestre traumatizado em colisão com automóvel, caminhonete ou furgão",
+    "V093": "Pedestre traumatizado em outros acidentes de transporte e nos não especificados",
+    "V234": "Motociclista traumatizado em colisão com automóvel, caminhonete ou furgão",
+    "V892": "Acidente de trânsito não especificado",
+    "W010": "Queda no mesmo nível por piso escorregadio",
     "W180": "Outras quedas no mesmo nível",
+    "W190": "Queda não especificada",
+    "W790": "Inalação e ingestão de alimentos causando obstrução das vias respiratórias",
     "X700": "Lesão autoprovocada intencionalmente (Suicídio)",
-    "X590": "Exposição a fatores não especificados como causa de ferimentos"
+    "X740": "Lesão autoprovocada intencionalmente por disparo de arma de fogo",
+    "X590": "Exposição a fatores não especificados como causa de ferimentos",
+    "X990": "Agressão por objeto cortante"
 }
 
 def traduzir_cid(codigo):
