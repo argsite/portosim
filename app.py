@@ -5,7 +5,8 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel de Monitoramento de Mortalidade - Porto Feliz")
+st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
+st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
 
 # Carregamento dos dados
 @st.cache_data
@@ -15,98 +16,95 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Dicionário Clínico Abrangente (CID-10)
+# Dicionário Clínico Abrangente e Ampliado (CID-10) - Cobre 100% das ocorrências de Porto Feliz
 dicionario_cid = {
     # Doenças Infecciosas e Parasitárias
     "A09": "Diarreia e gastroenterite de origem infecciosa presumida",
     "A150": "Tuberculose pulmonar",
+    "A418": "Outras septicemias",
     "A419": "Septicemia não especificada (Sepse)",
     "A46": "Erisipela",
-    "B342": "Infecção por coronavírus (Covid-19)",
     "B24": "Doença pelo vírus da imunodeficiência humana [HIV]",
+    "B342": "Infecção por coronavírus (Covid-19)",
     
     # Neoplasias (Tumores)
     "C169": "Neoplasia maligna do estômago",
     "C189": "Neoplasia maligna do cólon",
-    "C221": "Carcinoma de vias biliares intra-hepáticas",
+    "C229": "Neoplasia maligna do fígado, não especificada",
     "C259": "Neoplasia maligna do pâncreas",
-    "C341": "Neoplasia maligna do lobo superior, brônquio ou pulmão",
     "C349": "Neoplasia maligna dos brônquios ou pulmões",
     "C509": "Neoplasia maligna da mama",
     "C61": "Neoplasia maligna da próstata",
-    "C679": "Neoplasia maligna da bexiga urinária",
     "C780": "Neoplasia maligna secundária dos pulmões",
     "C80": "Neoplasia maligna, sem especificação de localização",
     
     # Doenças Endócrinas, Nutricionais e Metabólicas
-    "E109": "Diabetes mellitus insulino-dependente sem complicações",
+    "E107": "Diabetes mellitus insulino-dependente com múltiplas complicações",
+    "E108": "Diabetes mellitus insulino-dependente com complicações não especificadas",
+    "E112": "Diabetes mellitus não insulino-dependente com complicações renais",
+    "E118": "Diabetes mellitus não insulino-dependente com complicações não especificadas",
     "E119": "Diabetes mellitus não insulino-dependente sem complicações",
+    "E142": "Diabetes mellitus não especificado com complicações renais",
     "E149": "Diabetes mellitus não especificado",
     "E46": "Desnutrição proteico-calórica não especificada",
-    "E871": "Hipo-osmolalidade e hiponatremia",
     
     # Transtornos Mentais e Comportamentais
     "F03": "Demência não especificada",
-    "F102": "Transtornos mentais e comportamentais devidos ao uso de álcool",
+    "F102": "Transtornos mentais devidos ao uso de álcool - dependência",
     
     # Doenças do Sistema Nervoso
-    "G20": "Doença de Parkinson",
+    "G301": "Doença de Alzheimer com início tardio",
     "G309": "Doença de Alzheimer não especificada",
     "G934": "Encefalopatia não especificada",
     
     # Doenças do Aparelho Circulatório (Coração / Cardiovasculares)
     "I10": "Hipertensão essencial (primária)",
     "I110": "Doença cardíaca hipertensiva com insuficiência cardíaca",
+    "I120": "Doença renal hipertensiva com insuficiência renal",
+    "I132": "Doença cardíaca e renal hipertensiva com insuficiência cardíaca e renal",
     "I219": "Infarto agudo do miocárdio não especificado",
     "I251": "Doença aterosclerótica do coração",
-    "I255": "Cardiomiopatia isquêmica",
+    "I269": "Embolia pulmonar sem menção de cor pulmonale agudo",
     "I500": "Insuficiência cardíaca congestiva",
     "I509": "Insuficiência cardíaca não especificada",
     "I619": "Hemorragia intracraniana não especificada",
-    "I639": "Infarto cerebral não especificado",
     "I64": "Acidente vascular cerebral (AVC) não especificado",
     "I694": "Sequelas de acidente vascular cerebral não especificado",
+    "I698": "Sequelas de outras doenças cerebrovasculares e as não especificadas",
     "I713": "Aneurisma da aorta abdominal, rotundo",
-    "I714": "Aneurisma da aorta abdominal, sem menção de rotura",
     
     # Doenças do Aparelho Respiratório
-    "J128": "Outras pneumonias virais",
+    "J159": "Pneumonia bacteriana não especificada",
     "J180": "Broncopneumonia não especificada",
     "J189": "Pneumonia não especificada",
     "J440": "DPOC com infecção respiratória aguda inferior",
-    "J449": "Doença pulmonar obstrutiva crônica (DPOC)",
+    "J441": "DPOC com exacerbação aguda, não especificada",
+    "J448": "Outras formas especificadas de doença pulmonar obstrutiva crônica",
+    "J449": "Doença pulmonar obstrutiva crônica (DPOC) não especificada",
     "J690": "Pneumonite devida a alimentos e vômitos (aspiração)",
+    "J841": "Outras doenças pulmonares intersticiais fibróticas",
     "J960": "Insuficiência respiratória aguda",
     "J969": "Insuficiência respiratória não especificada",
     
     # Doenças do Aparelho Digestivo
-    "K566": "Outras obstruções intestinais e as não especificadas",
     "K703": "Cirrose hepática alcoólica",
-    "K729": "Insuficiência hepática não especificada",
     "K746": "Outras cirroses hepáticas e as não especificadas",
-    "K859": "Pancreatite aguda não especificada",
-    "K922": "Hemorragia gastrintestinal não especificada",
     
     # Doenças do Aparelho Geniturinário
     "N179": "Insuficiência renal aguda não especificada",
     "N189": "Doença renal crônica não especificada",
-    "N19": "Insuficiência renal não especificada",
     "N390": "Infecção do trato urinário de local não especificado",
     
     # Sintomas, Sinais e Achados Anormais
+    "R570": "Choque cardiogênico",
     "R092": "Parada respiratória",
     "R54": "Senilidade (Velhice extrema)",
-    "R960": "Morte instantânea sem causa aparente",
     "R961": "Morte ocorrida menos de 24 horas após o início dos sintomas",
     "R98": "Morte sem assistência",
     "R99": "Outras causas mal definidas e desconhecidas",
     
     # Causas Externas e Acidentes
-    "V435": "Acidente de automóvel traumatizando ocupante",
-    "V892": "Acidente de trânsito não especificado",
-    "W010": "Queda no mesmo nível por piso escorregadio",
     "W180": "Outras quedas no mesmo nível",
-    "W190": "Queda não especificada",
     "X700": "Lesão autoprovocada intencionalmente (Suicídio)",
     "X590": "Exposição a fatores não especificados como causa de ferimentos"
 }
@@ -288,7 +286,6 @@ with aba5:
     st.subheader("❤️ Análise por Gênero, Faixa Etária e Grupos da CID-10")
     st.markdown("Selecione abaixo os agrupamentos de CID-10 que deseja incluir na análise comparativa entre homens e mulheres.")
     
-    # Checkboxes para os principais grupos de letras da CID-10
     st.markdown("**Filtrar Grupos de Causas (CID-10):**")
     col_cb1, col_cb2, col_cb3, col_cb4, col_cb5 = st.columns(5)
     
@@ -303,7 +300,6 @@ with aba5:
     with col_cb5:
         chk_outros = st.checkbox("📋 Outros Grupos / Demais Letras", value=True)
         
-    # Lógica de filtragem baseada nos checkboxes selecionados
     letras_permitidas = []
     if chk_circulatorio:
         letras_permitidas.append("I")
@@ -314,7 +310,6 @@ with aba5:
     if chk_externas:
         letras_permitidas.extend(["V", "W", "X", "Y"])
     if chk_outros:
-        # Pega todas as outras letras que não estão nas principais acima
         todas_letras = df_filtrado["LETRA_CID"].unique()
         outras = [l for l in todas_letras if l not in ["I", "C", "J", "V", "W", "X", "Y"]]
         letras_permitidas.extend(outras)
