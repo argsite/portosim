@@ -5,7 +5,7 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel de Monitoramento de Mortalidade - Porto Feliz")
+st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
 st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
 
 # Carregamento dos dados
@@ -16,7 +16,7 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Dicionário Clínico Abrangente (CID-10) para tradução de óbitos de Porto Feliz
+# Dicionário Clínico Abrangente (CID-10)
 dicionario_cid = {
     # Doenças Infecciosas e Parasitárias
     "A09": "Diarreia e gastroenterite de origem infecciosa presumida",
@@ -48,14 +48,14 @@ dicionario_cid = {
     
     # Transtornos Mentais e Comportamentais
     "F03": "Demência não especificada",
-    "F102": "Transtornos mentais e comportamentais devidos ao uso de álcool - síndrome de dependência",
+    "F102": "Transtornos mentais e comportamentais devidos ao uso de álcool",
     
     # Doenças do Sistema Nervoso
     "G20": "Doença de Parkinson",
     "G309": "Doença de Alzheimer não especificada",
     "G934": "Encefalopatia não especificada",
     
-    # Doenças do Aparelho Circulatório
+    # Doenças do Aparelho Circulatório (Coração / Cardiovasculares)
     "I10": "Hipertensão essencial (primária)",
     "I110": "Doença cardíaca hipertensiva com insuficiência cardíaca",
     "I219": "Infarto agudo do miocárdio não especificado",
@@ -145,12 +145,19 @@ bins = [0, 20, 40, 60, 80, 130]
 labels = ["0-19 anos", "20-39 anos", "40-59 anos", "60-79 anos", "80+ anos"]
 df["FAIXA_ETARIA"] = pd.cut(df["IDADE_ANOS"], bins=bins, labels=labels, right=False)
 
-# Mapeamento do Local de Óbito usando a coluna LOCOCOR do SIM
+# Mapeamento do Local de Óbito
 mapa_local = {1: "Hospital", 2: "Outro Estab. Saúde", 3: "Domicílio", 4: "Via Pública", 5: "Outros"}
 if "LOCOCOR" in df.columns:
     df["LOCAL_DESC"] = df["LOCOCOR"].map(mapa_local).fillna("Não Informado")
 else:
     df["LOCAL_DESC"] = "Não Informado"
+
+# Tradução padronizada do Sexo no SIM (1 = Masculino, 2 = Feminino)
+mapa_sexo = {1: "Masculino", 2: "Feminino"}
+if "SEXO" in df.columns:
+    df["SEXO_DESC"] = df["SEXO"].map(mapa_sexo).fillna("Não Informado")
+else:
+    df["SEXO_DESC"] = "Não Informado"
 
 # Barra Lateral - Filtros Globais
 st.sidebar.header("🔍 Filtros Operacionais Globais")
@@ -170,8 +177,14 @@ if "IDADE_ANOS" in df_filtrado.columns and not df_filtrado["IDADE_ANOS"].dropna(
 c4.metric("Município", "Porto Feliz - SP")
 st.markdown("---")
 
-# Abas para Organizar o Dashboard
-aba1, aba2, aba3, aba4 = st.tabs(["📈 Visão Geral", "👥 Perfil & Local", "🔬 Causas", "📋 Tabela Interativa & Filtros"])
+# Abas para Organizar o Dashboard (Adicionada a Aba 5)
+aba1, aba2, aba3, aba4, aba5 = st.tabs([
+    "📈 Visão Geral", 
+    "👥 Perfil & Local", 
+    "🔬 Causas", 
+    "📋 Tabela Interativa & Filtros", 
+    "❤️ Análise por Gênero & Coração"
+])
 
 with aba1:
     col1, col2 = st.columns(2)
@@ -258,7 +271,7 @@ with aba4:
         
     st.markdown(f"**Registros encontrados com os filtros aplicados:** {len(df_tabela)}")
     
-    colunas_exibicao = ["ANO_OBITO", "DTOBITO", "IDADE_ANOS", "FAIXA_ETARIA", "SEXO", "CAUSA_DESC", "LOCAL_DESC"]
+    colunas_exibicao = ["ANO_OBITO", "DTOBITO", "IDADE_ANOS", "FAIXA_ETARIA", "SEXO_DESC", "CAUSA_DESC", "LOCAL_DESC"]
     colunas_presentes = [c for c in colunas_exibicao if c in df_tabela.columns]
     
     st.dataframe(df_tabela[colunas_presentes], use_container_width=True)
@@ -270,3 +283,66 @@ with aba4:
         file_name="obitos_porto_feliz_filtrado.csv",
         mime="text/csv",
     )
+
+with aba5:
+    st.subheader("❤️ Análise Especial: Óbitos por Gênero, Faixa Etária e Foco Cardíaco")
+    st.markdown("Cruzamento detalhado para investigar o impacto das doenças cardiovasculares e causas gerais divididas por gênero e faixa etária na comunidade.")
+    
+    # Filtro interno rápido para a aba 5 se focar em causas do coração
+    foco_coracao = st.checkbox("Destacar apenas Causas Cardíacas / Doenças do Coração (CID-10 iniciadas com I)")
+    
+    df_genero = df_filtrado.copy()
+    if foco_coracao:
+        # Filtra códigos CID que começam com a letra 'I' (doenças do aparelho circulatório)
+        df_genero = df_genero[df_genero["CAUSABAS"].str.startswith("I", na=False)]
+        st.info("Filtro aplicado: Exibindo apenas óbitos por doenças do aparelho circulatório.")
+
+    col_g1, col_g2 = st.columns(2)
+    
+    with col_g1:
+        st.markdown("### 👨 Óbitos de Homens (Faixa Etária & Causa)")
+        df_homens = df_genero[df_genero["SEXO_DESC"] == "Masculino"]
+        if not df_homens.empty:
+            cross_homens = df_homens.groupby(["FAIXA_ETARIA", "CAUSA_DESC"]).size().reset_index(name="Total")
+            # Pega as top causas para o gráfico não ficar poluído
+            top_causas_h = df_homens["CAUSA_DESC"].value_counts().head(6).index.tolist()
+            cross_homens_top = cross_homens[cross_homens["CAUSA_DESC"].isin(top_causas_h)]
+            
+            fig_h = px.bar(
+                cross_homens_top, 
+                x="FAIXA_ETARIA", 
+                y="Total", 
+                color="CAUSA_DESC", 
+                barmode="stack",
+                title="Homens: Causas por Faixa Etária"
+            )
+            st.plotly_chart(fig_h, use_container_width=True)
+        else:
+            st.warning("Nenhum registro encontrado para os filtros selecionados.")
+            
+    with col_g2:
+        st.markdown("### 👩 Óbitos de Mulheres (Faixa Etária & Causa)")
+        df_mulheres = df_genero[df_genero["SEXO_DESC"] == "Feminino"]
+        if not df_mulheres.empty:
+            cross_mulheres = df_mulheres.groupby(["FAIXA_ETARIA", "CAUSA_DESC"]).size().reset_index(name="Total")
+            top_causas_m = df_mulheres["CAUSA_DESC"].value_counts().head(6).index.tolist()
+            cross_mulheres_top = cross_mulheres[cross_mulheres["CAUSA_DESC"].isin(top_causas_m)]
+            
+            fig_m = px.bar(
+                cross_mulheres_top, 
+                x="FAIXA_ETARIA", 
+                y="Total", 
+                color="CAUSA_DESC", 
+                barmode="stack",
+                title="Mulheres: Causas por Faixa Etária (Atenção Cardíaca)"
+            )
+            st.plotly_chart(fig_m, use_container_width=True)
+        else:
+            st.warning("Nenhum registro encontrado para os filtros selecionados.")
+            
+    st.markdown("---")
+    st.markdown("#### 💡 Como visualizar e interpretar para a equipe:")
+    st.markdown("""
+    * **Gráficos Empilhados por Faixa Etária:** Ao olhar o gráfico das mulheres, as cores empilhadas mostram exatamente em qual faixa etária (ex: 60-79 anos ou 80+ anos) as complicações cardíacas ou outras causas estão pesando mais.
+    * **Botão de Foco Cardíaco:** Marcar a caixinha *"Destacar apenas Causas Cardíacas"* isola instantaneamente o grupo de doenças do aparelho circulatório (infarto, insuficiência cardíaca, AVC, hipertensão), respondendo de forma imediata se há uma concentração de óbitos femininos por problemas do coração na unidade.
+    """)
