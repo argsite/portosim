@@ -5,8 +5,7 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
-st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
+st.title("📊 Painel de Análise de Mortalidade - Porto Feliz")
 
 # Carregamento dos dados
 @st.cache_data
@@ -188,7 +187,7 @@ def eh_evitavel_aps(codigo):
 df["EVITAVEL_APS"] = df["CAUSABAS"].apply(eh_evitavel_aps)
 
 # Barra Lateral - Filtros Globais
-st.sidebar.header("🔍 Filtros Operacionais Globais")
+st.sidebar.header("🔍 Filtros")
 anos_disponiveis = sorted(df["ANO_OBITO"].dropna().unique())
 anos_selecionados = st.sidebar.multiselect("Selecione o(s) Ano(s):", options=anos_disponiveis, default=anos_disponiveis)
 
