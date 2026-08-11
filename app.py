@@ -5,7 +5,8 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel de Análise de Mortalidade - Porto Feliz")
+st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
+st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
 
 # Carregamento dos dados
 @st.cache_data
@@ -146,12 +147,11 @@ if "SEXO" in df.columns:
 else:
     df["SEXO_DESC"] = "Não Informado"
 
-# Função para identificar causas passíveis de atenção primária / evitáveis (ex: Hipertensão, Diabetes, Pneumonias tratáveis, ITU, etc.)
+# Classificação de Causas Evitáveis / Atenção Primária
 def eh_evitavel_aps(codigo):
     if pd.isna(codigo):
         return False
     c = str(codigo).strip().upper()
-    # Lista de prefixos ou códigos comuns de atenção primária / evitáveis
     prefixos_aps = ("I10", "I11", "I12", "I13", "E10", "E11", "E14", "J15", "J18", "N39", "A09")
     return c.startswith(prefixos_aps)
 
@@ -164,7 +164,7 @@ anos_selecionados = st.sidebar.multiselect("Selecione o(s) Ano(s):", options=ano
 
 df_filtrado = df[df["ANO_OBITO"].isin(anos_selecionados)] if anos_selecionados else df.copy()
 
-# Métricas Principais Ampliadas nos Cards de Topo (divididas em duas linhas para melhor visualização)
+# Métricas Principais Ampliadas nos Cards de Topo
 st.markdown("---")
 total_obitos = len(df_filtrado)
 total_homens = len(df_filtrado[df_filtrado["SEXO_DESC"] == "Masculino"])
@@ -189,13 +189,14 @@ c6.metric("👩 Média de Idade (Mulheres)", f"{media_m} anos")
 c7.metric("Município", "Porto Feliz - SP")
 st.markdown("---")
 
-# Abas para Organizar o Dashboard
-aba1, aba2, aba3, aba4, aba5 = st.tabs([
+# Abas para Organizar o Dashboard (Com a nova Aba 6)
+aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
     "📈 Visão Geral", 
     "👥 Perfil & Local", 
     "🔬 Causas", 
     "📋 Tabela Interativa & Filtros", 
-    "❤️ Análise por Gênero & Grupos CID-10"
+    "❤️ Análise por Gênero & Grupos CID-10",
+    "🛡️ Óbitos Evitáveis (APS)"
 ])
 
 with aba1:
@@ -372,3 +373,45 @@ with aba5:
             st.plotly_chart(fig_m, use_container_width=True)
         else:
             st.warning("Nenhum registro encontrado para os filtros selecionados.")
+
+with aba6:
+    st.subheader("🛡️ Monitoramento de Óbitos por Causas Evitáveis (Atenção Primária à Saúde)")
+    st.markdown("Esta aba isola os óbitos associados a agravos que poderiam ser prevenidos, controlados ou tratados de forma oportuna pelas equipes de saúde da família (hipertensão, diabetes, infecções tratáveis, etc.).")
+    
+    df_evitaveis = df_filtrado[df_filtrado["EVITAVEL_APS"] == True]
+    
+    col_e1, col_e2 = st.columns(2)
+    with col_e1:
+        st.metric("Total de Óbitos Evitáveis no Período", len(df_evitaveis))
+    with col_e2:
+        perc = (len(df_evitaveis) / len(df_filtrado) * 100) if len(df_filtrado) > 0 else 0
+        st.metric("Percentual sobre o Total Geral", f"{perc:.1f}%")
+        
+    st.markdown("---")
+    
+    if not df_evitaveis.empty:
+        col_graf, col_tab = st.columns([1, 1])
+        
+        with col_graf:
+            st.subheader("📊 Principais Causas Evitáveis")
+            top_evit = df_evitaveis["CAUSA_DESC"].value_counts().reset_index()
+            top_evit.columns = ["Causa", "Total"]
+            fig_evit = px.bar(top_evit, x="Total", y="Causa", orientation="h", color="Total", color_continuous_scale="Oranges", text="Total")
+            fig_evit.update_layout(yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_evit, use_container_width=True)
+            
+        with col_tab:
+            st.subheader("📋 Tabela Analítica de Óbitos Evitáveis")
+            colunas_evit = ["ANO_OBITO", "DTOBITO", "IDADE_ANOS", "SEXO_DESC", "CAUSA_DESC", "LOCAL_DESC"]
+            col_pres_evit = [c for c in colunas_evit if c in df_evitaveis.columns]
+            st.dataframe(df_evitaveis[col_pres_evit], use_container_width=True)
+            
+            csv_evit = df_evitaveis[col_pres_evit].to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Baixar dados de Óbitos Evitáveis em CSV",
+                data=csv_evit,
+                file_name="obitos_evitaveis_porto_feliz.csv",
+                mime="text/csv",
+            )
+    else:
+        st.warning("Nenhum óbito evitável encontrado para os filtros selecionados.")
