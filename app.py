@@ -5,8 +5,7 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
-st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
+st.title("📊 Painel de Análise de Mortalidade - Porto Feliz")
 
 # Carregamento dos dados
 @st.cache_data
@@ -16,7 +15,7 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Dicionário Clínico Abrangente e Ampliado (CID-10)
+# Dicionário Clínico Abrangente e Ampliado (CID-10) - Inclui todas as variações solicitadas
 dicionario_cid = {
     "A09": "Diarreia e gastroenterite de origem infecciosa presumida",
     "A150": "Tuberculose pulmonar",
@@ -25,6 +24,8 @@ dicionario_cid = {
     "A46": "Erisipela",
     "B24": "Doença pelo vírus da imunodeficiência humana [HIV]",
     "B342": "Infecção por coronavírus (Covid-19)",
+    
+    # Neoplasias (Tumores)
     "C169": "Neoplasia maligna do estômago",
     "C189": "Neoplasia maligna do cólon",
     "C229": "Neoplasia maligna do fígado, não especificada",
@@ -36,22 +37,37 @@ dicionario_cid = {
     "C61": "Neoplasia maligna da próstata",
     "C780": "Neoplasia maligna secundária dos pulmões",
     "C80": "Neoplasia maligna, sem especificação de localização",
+    
+    # Diabetes e Distúrbios Metabólicos (E10 a E14)
+    "E105": "Diabetes mellitus insulino-dependente com complicações circulatórias periféricas",
+    "E106": "Diabetes mellitus insulino-dependente com outras complicações especificadas",
     "E107": "Diabetes mellitus insulino-dependente com múltiplas complicações",
     "E108": "Diabetes mellitus insulino-dependente com complicações não especificadas",
+    "E109": "Diabetes mellitus insulino-dependente sem complicações",
+    "E110": "Diabetes mellitus não insulino-dependente com coma",
+    "E111": "Diabetes mellitus não insulino-dependente com cetoacidose",
     "E112": "Diabetes mellitus não insulino-dependente com complicações renais",
+    "E116": "Diabetes mellitus não insulino-dependente com outras complicações especificadas",
+    "E117": "Diabetes mellitus não insulino-dependente com múltiplas complicações",
     "E118": "Diabetes mellitus não insulino-dependente com complicações não especificadas",
     "E119": "Diabetes mellitus não insulino-dependente sem complicações",
     "E142": "Diabetes mellitus não especificado com complicações renais",
+    "E147": "Diabetes mellitus não especificado com múltiplas complicações",
     "E149": "Diabetes mellitus não especificado",
     "E46": "Desnutrição proteico-calórica não especificada",
+    
+    # Transtornos Mentais e Demências
     "F03": "Demência não especificada",
     "F102": "Transtornos mentais devidos ao uso de álcool - dependência",
     "G301": "Doença de Alzheimer com início tardio",
     "G309": "Doença de Alzheimer não especificada",
     "G934": "Encefalopatia não especificada",
+    
+    # Doenças Cardiovasculares e Hipertensivas (I10 a I15)
     "I10": "Hipertensão essencial (primária)",
     "I110": "Doença cardíaca hipertensiva com insuficiência cardíaca",
     "I120": "Doença renal hipertensiva com insuficiência renal",
+    "I131": "Doença cardíaca e renal hipertensiva com insuficiência renal",
     "I132": "Doença cardíaca e renal hipertensiva com insuficiência cardíaca e renal",
     "I219": "Infarto agudo do miocárdio não especificado",
     "I251": "Doença aterosclerótica do coração",
@@ -63,8 +79,11 @@ dicionario_cid = {
     "I694": "Sequelas de acidente vascular cerebral não especificado",
     "I698": "Sequelas de outras doenças cerebrovasculares e as não especificadas",
     "I713": "Aneurisma da aorta abdominal, rotundo",
+    
+    # Doenças Respiratórias (J10 a J18)
     "J159": "Pneumonia bacteriana não especificada",
     "J180": "Broncopneumonia não especificada",
+    "J188": "Outras pneumonias por microrganismo não especificado",
     "J189": "Pneumonia não especificada",
     "J440": "DPOC com infecção respiratória aguda inferior",
     "J441": "DPOC com exacerbação aguda, não especificada",
@@ -74,11 +93,15 @@ dicionario_cid = {
     "J841": "Outras doenças pulmonares intersticiais fibróticas",
     "J960": "Insuficiência respiratória aguda",
     "J969": "Insuficiência respiratória não especificada",
+    
+    # Aparelho Digestivo e Geniturinário
     "K703": "Cirrose hepática alcoólica",
     "K746": "Outras cirroses hepáticas e as não especificadas",
     "N179": "Insuficiência renal aguda não especificada",
     "N189": "Doença renal crônica não especificada",
     "N390": "Infecção do trato urinário de local não especificado",
+    
+    # Sintomas, Sinais e Causas Externas
     "R570": "Choque cardiogênico",
     "R092": "Parada respiratória",
     "R54": "Senilidade (Velhice extrema)",
@@ -147,18 +170,19 @@ if "SEXO" in df.columns:
 else:
     df["SEXO_DESC"] = "Não Informado"
 
-# Classificação de Causas Evitáveis / Atenção Primária
+# Função ampliada para classificar óbitos evitáveis / Atenção Primária
 def eh_evitavel_aps(codigo):
     if pd.isna(codigo):
         return False
     c = str(codigo).strip().upper()
-    prefixos_aps = ("I10", "I11", "I12", "I13", "E10", "E11", "E14", "J15", "J18", "N39", "A09")
+    # Abrange Hipertensão (I10-I15), Diabetes (E10-E14), Pneumonias (J10-J18), ITU/Renais (N30-N39), Doenças Infecciosas Intestinais (A00-A09)
+    prefixos_aps = ("I1", "E10", "E11", "E12", "E13", "E14", "J1", "N3", "A0")
     return c.startswith(prefixos_aps)
 
 df["EVITAVEL_APS"] = df["CAUSABAS"].apply(eh_evitavel_aps)
 
 # Barra Lateral - Filtros Globais
-st.sidebar.header("🔍 Filtros Operacionais Globais")
+st.sidebar.header("🔍 Filtros")
 anos_disponiveis = sorted(df["ANO_OBITO"].dropna().unique())
 anos_selecionados = st.sidebar.multiselect("Selecione o(s) Ano(s):", options=anos_disponiveis, default=anos_disponiveis)
 
@@ -189,7 +213,7 @@ c6.metric("👩 Média de Idade (Mulheres)", f"{media_m} anos")
 c7.metric("Município", "Porto Feliz - SP")
 st.markdown("---")
 
-# Abas para Organizar o Dashboard (Com a nova Aba 6)
+# Abas para Organizar o Dashboard
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
     "📈 Visão Geral", 
     "👥 Perfil & Local", 
