@@ -5,7 +5,8 @@ import plotly.express as px
 # Configuração da página
 st.set_page_config(page_title="Dashboard de Mortalidade - Porto Feliz", layout="wide")
 
-st.title("📊 Painel de Análise de Mortalidade - Porto Feliz")
+st.title("📊 Painel Estratégico de Monitoramento de Mortalidade - Porto Feliz")
+st.markdown("Ferramenta avançada de apoio ao planejamento em Saúde da Família.")
 
 # Carregamento dos dados
 @st.cache_data
@@ -15,8 +16,10 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Dicionário Clínico Abrangente e Ampliado (CID-10) - Inclui todas as variações solicitadas
+# Dicionário Clínico Abrangente e Ampliado (CID-10) - Inclui os novos códigos solicitados
 dicionario_cid = {
+    # Doenças Infecciosas e Parasitárias
+    "A085": "Outras infecções intestinais virais e outras especificadas",
     "A09": "Diarreia e gastroenterite de origem infecciosa presumida",
     "A150": "Tuberculose pulmonar",
     "A418": "Outras septicemias",
@@ -39,6 +42,7 @@ dicionario_cid = {
     "C80": "Neoplasia maligna, sem especificação de localização",
     
     # Diabetes e Distúrbios Metabólicos (E10 a E14)
+    "E103": "Diabetes mellitus insulino-dependente com complicações oftálmicas",
     "E105": "Diabetes mellitus insulino-dependente com complicações circulatórias periféricas",
     "E106": "Diabetes mellitus insulino-dependente com outras complicações especificadas",
     "E107": "Diabetes mellitus insulino-dependente com múltiplas complicações",
@@ -81,6 +85,9 @@ dicionario_cid = {
     "I713": "Aneurisma da aorta abdominal, rotundo",
     
     # Doenças Respiratórias (J10 a J18)
+    "J129": "Pneumonia viral não especificada",
+    "J14": "Pneumonia devido a Haemophilus influenzae",
+    "J158": "Outras pneumonias bacterianas",
     "J159": "Pneumonia bacteriana não especificada",
     "J180": "Broncopneumonia não especificada",
     "J188": "Outras pneumonias por microrganismo não especificado",
@@ -175,14 +182,13 @@ def eh_evitavel_aps(codigo):
     if pd.isna(codigo):
         return False
     c = str(codigo).strip().upper()
-    # Abrange Hipertensão (I10-I15), Diabetes (E10-E14), Pneumonias (J10-J18), ITU/Renais (N30-N39), Doenças Infecciosas Intestinais (A00-A09)
     prefixos_aps = ("I1", "E10", "E11", "E12", "E13", "E14", "J1", "N3", "A0")
     return c.startswith(prefixos_aps)
 
 df["EVITAVEL_APS"] = df["CAUSABAS"].apply(eh_evitavel_aps)
 
 # Barra Lateral - Filtros Globais
-st.sidebar.header("🔍 Filtros")
+st.sidebar.header("🔍 Filtros Operacionais Globais")
 anos_disponiveis = sorted(df["ANO_OBITO"].dropna().unique())
 anos_selecionados = st.sidebar.multiselect("Selecione o(s) Ano(s):", options=anos_disponiveis, default=anos_disponiveis)
 
